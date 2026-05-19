@@ -1,0 +1,33 @@
+
+// Changes vcollect.h
+/*
+
+//// in the collect_variation_in
+VLUT_NO_VALUE_HANDLE();
+return VLUT_NO_VALUE_RETURN_VALUE; // Default behaviour of collect_variation
+
+//// charclass paradox
+-> define a dummy charclass always, but make sure to change it
+
+//// fixed
+VLUT_PUSH_KEY -> segmentaion fault
+
+// //// fixed the termination case in collect functions
+//     if (!*_str) {
+//         struct collect_out ret = {char_class, current_token, _str};
+//         return ret; // return.
+//     }
+
+
+// #define charclass
+// #define VLUT_NO_VALUE_RETURN
+
+
+//
+#define VERLET_CHARCLASS(c) __VERLET__charclass(c)
+#ifdef VERLET_CHARCLASS
+uint_least16_t __VERLET__charclass(int c); // Implementation in __VERLET__INIT__
+#endif
+
+
+*/
