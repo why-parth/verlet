@@ -2,12 +2,13 @@
 // Standard Verlet Header
 //
 
+#if !defined(VERLET_COLLECT)
+#define VERLET_COLLECT
+
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "vutils.h"
-
-#if !defined(VERLET_COLLECT_PRIMARY)
-#define VERLET_COLLECT_PRIMARY
 
 typedef uint_least16_t avsme;
 /* AVSME's definition. */
@@ -82,7 +83,7 @@ buffer[out.new_token - out.old_token] = 0
 /* This macro creates a 2D UID array of the given dimensions {max_keys, max_values + 2} (+ 2 to account for storing keys and the number of values). */
 
 #define __VLUT_variable_declare(name, max_values) 			        			\
-    typedef struct { size_t n_keys; mergetoken(name, _VLUT_TABLE_t) table; }   	\
+    typedef struct { size_t n_keys; mergetoken(name, _VLUT_TABLE_t) table; }    \
     mergetoken(name, _VLUT_t); mergetoken(name, _VLUT_t) name; name.n_keys = 0; \
     name.table = mergetoken(__VLUT__, __LINE__)
 /* This macro defines a struct especially to use the UID typedef from the macro __VLUT_typedef_pointer_to_array and then creates its instance whose n_keys is set 0 and table is set to UID array from __VLUT_key_value_declare. */
@@ -93,10 +94,12 @@ buffer[out.new_token - out.old_token] = 0
     __VLUT_variable_declare(name, max_values)							
 /* This macro includes all the macros sequentially (in line) to maintain the UID mechanism. */
 
-#define VLUT_PUSH_KEY(name)			name.table[name.n_keys][1] = 0; name.table[name.n_keys][ ((name.n_keys)++, 0) ] =
+#define __VLUT_PUSH_KEY(name)			    name.table[name.n_keys + (name.table[name.n_keys][1] = 0)][ ((name.n_keys)++, 0) ]
+#define VLUT_PUSH_KEY(name)			    __VLUT_PUSH_KEY(name) =
 /* This macro pushes a key onto a VLUT. */
  
-#define VLUT_PUSH_VALUE(name, i_key)	name.table[i_key][ ++(name.table[i_key][1]) + 1 ] =
+#define __VLUT_PUSH_VALUE(name, i_key)	name.table[i_key][ ++(name.table[i_key][1]) + 1 ]
+#define VLUT_PUSH_VALUE(name, i_key)	__VLUT_PUSH_VALUE(name, i_key) =
 /* This macro pushes a value onto an entry (corresponding to a key)  of a VLUT. */
 
 #define VLUT_N_KEY                      .n_keys
@@ -120,21 +123,47 @@ extern avsme AVSME_FALSE;
 : ( ((a >> AVSME_ASCII_SHIFT == 2) || (a >> AVSME_ASCII_SHIFT == 2)) ? AVSME_FALSE : AVSME_NONE ))
 /* This macro allows boolean logic with AVSMEs. */
 
-#define AVSME_OVERLAP(a, b) (				\
-AVSME_COMPARE(a, b, ASCII)			        \
-|| (									    \
-AVSME_COMPARE(a, b, MAINCLASS) 	            \
-&& 								            \
-AVSME_COMPARE(a, b, SUBCLASS) 	            \
-)									        \
+#define AVSME_OVERLAP(a, b) (				    \
+    AVSME_COMPARE(a, b, ASCII)			        \
+    || (									    \
+        AVSME_COMPARE(a, b, MAINCLASS) 	        \
+        && (                                    \
+            !AVSME_GET(a, SUBCLASS)             \
+            ||                                  \
+            AVSME_COMPARE(a, b, SUBCLASS)       \
+        )								        \
+    )                                           \
 )
 /* This macro compares ASCII, Sub-class and Class bit masks of the two AVSMEs.*/
 
 #define AVSME_VARIANT(a) AVSME_GET(a, VARIANCE)
 /* This macro returns the variance of the AVSME.*/
 
-#elif !defined(VERLET_COLLECT_SECONDARY)
-#define VERLET_COLLECT_SECONDARY
+typedef uint64_t hash;
+extern hash __token_meta;
+
+#define push_fnv __token_meta *= 1099511628211ULL; __token_meta ^= (uint8_t)
+#define get_fnv (__token_meta)
+#define reset_fnv __token_meta = 14695981039346656037ULL
+
+hash __fnv(char * str, ...);
+
+#define fnv(_token, ...) __VA_OPT__(_token; _token =) __fnv(__VA_ARGS__ __VA_OPT__(,) _token )
+
+#define token_is(cmp, ...) (_Generic((cmp),                                                     \
+    hash : (get_fnv == (hash)cmp),                                                              \
+    char * : (get_fnv == __fnv((char *)cmp)),                                                   \
+    uint8_t : ( (out.char_class & AVSME_MAINCLASS) == _Generic((cmp), char *: 0, default : cmp) \
+        __VA_OPT__(&& (out.char_class & AVSME_SUBCLASS) == (0 __VA_ARGS__)) ),                    \
+    default : (0)                                                                               \
+))
+
+#define class_is(cmp, ...) ( (out.char_class & AVSME_MAINCLASS) == cmp __VA_OPT__(&& (out.char_class & AVSME_SUBCLASS) == __VA_ARGS__) )
+
+#define VERLET_COLLECT_IMPL
+
+// #elif !defined(VERLET_COLLECT_SECONDARY)
+// #define VERLET_COLLECT_SECONDARY
 
 
 struct collect_out collect_immediate(char * _str);
@@ -155,13 +184,15 @@ size_t print_str_collective_immediate(char * _str);
                                             _vlut.n_keys,						    \
                                             (avsme *)_vlut.table,					\
                                             sizeof(*(_vlut.table)) / sizeof(avsme)	\
+                                            0\
                                         ) /* Parameter Extraction Layer */
 
 struct collect_out __collect_variation  (
                                             char * 	_str,
                                             size_t 	n_keys,
                                             avsme * table,
-                                            size_t 	_stride
+                                            size_t 	_stride,
+                                            size_t * countptr
                                         ); /* Actual Function */
 
 
@@ -197,3 +228,5 @@ size_t __print_str_collective_variation (
                                         ); /* Actual Function */
 
 #endif
+
+// v0.1.1 -> VLUT_PUSH_KEY is changed so that IF_ARGS supports it

@@ -1,64 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
-#include "vutils.h"
+#include "vutils.h"     // Vutils
 
-#include "vcollect.h"
-
-avsme IDVALID = 0;
-avsme NUMBERS = 0;
-avsme SYMBOLS = 0;
-
-#define charclass(c) AVSME_SET( ( __char_idvalid(c) ? IDVALID : (__char_digit(c) ? NUMBERS : SYMBOLS) ), ASCII, c)
-
-_Noreturn void VLUT_exit(void) {
-    printf("\033[31m<! VLUT case is not registered. !>\033[0m");
-    exit(-1);
-}
-#define VLUT_NO_VALUE_HANDLE goto VLUT_ERROR_CHECK
-#define VLUT_NO_KEY_HANDLE goto VLUT_ERROR_CHECK
-#define VLUT_ERROR_HANDLE VLUT_exit()
-#define VLUT_ERROR_RETURN_HANDLE COLLECT_OUT_NULL
-
-#include "vcollect.h"
+#include v_script       // Vscript
+#include v_implement    // Required implementations
 
 int main(void) {
 
-    IDVALID = AVSME_SET(IDVALID, MAINCLASS, 1);
-    NUMBERS = AVSME_SET(NUMBERS, MAINCLASS, 2);
-    SYMBOLS = AVSME_SET(SYMBOLS, MAINCLASS, 3);
+    Vlut {  // Lexer's Behavior
 
-    VLUT_DECLARE(vlut, 4, 4);
+        For idvalid
+            Join idvalid
+            Join numeric
+            Vary All;
 
-    VLUT_PUSH_KEY(vlut) IDVALID;  // index 0
+        For numeric
+            Join numeric
+            Vary All;
+
+        For All
+            Vary All;
+
+        Make(vlut, 8, 8); // Storing Lexer's Behavior
+
+    }
     
-    VLUT_PUSH_VALUE(vlut, 0) AVSME_SET(SYMBOLS, VARIANCE, 1);
-    VLUT_PUSH_VALUE(vlut, 0) AVSME_TRUE;
+    char string_sample[] = "int Ta4_5 = 56;";   // Sample
 
-    VLUT_PUSH_KEY(vlut) SYMBOLS;  // index 1
-    
-    VLUT_PUSH_VALUE(vlut, 1) AVSME_SET(AVSME_SET(0, ASCII, 'n'), VARIANCE, 1);
-    VLUT_PUSH_VALUE(vlut, 1) AVSME_FALSE;
+    Using(vlut) Collect(string_sample) {    // Token Scanning Block
 
-    VLUT_PUSH_KEY(vlut) NUMBERS;  // index 2
-    
-    VLUT_PUSH_VALUE(vlut, 2) NUMBERS;
-    VLUT_PUSH_VALUE(vlut, 2) AVSME_FALSE;
+        token_show; // Showing the tokens
 
-    char string[] = "int main34(void){return 0;}";
-    
-    printf("%s\n", string);
-
-    // struct collect_out out;
-
-    // while (( out collecting(string, vlut) ))
-
-    // print_collected(out), putchar('\n');
-
-    print_str_collective_variation(string, vlut);
-    // print_str_collective_immediate(string);
+    }
 
     return 0;
 }
-
-
