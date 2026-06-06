@@ -1,8 +1,5 @@
-// Verlet Read Write Header
-#if defined(_INC_STDIO) && !defined(Open) && !defined(For) && !defined(In)
-#define _INC_VERLET_READWRITE
 
-#include "vutils.h"
+#include "svh_05_script.h"
 
 #define _DEF_FILE_STRUCT
 
@@ -82,5 +79,3 @@ extern fpos_t __fs__reader_pos;
 __fs__init_Reader
 
 __fs__init_Writer
-
-#endif
